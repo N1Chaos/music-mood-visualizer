@@ -3,7 +3,9 @@ const SpotifyWebApi = require('spotify-web-api-node');
 const cors = require('cors');
 
 const app = express();
-app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(cors({
+    origin: ['http://localhost:3000', 'https://music-mood-visualizer.netlify.app']
+}));
 app.use(express.json());
 
 const spotifyApi = new SpotifyWebApi({
