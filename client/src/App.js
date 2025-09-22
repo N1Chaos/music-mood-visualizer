@@ -9,26 +9,35 @@ function App() {
     setSongInput(e.target.value);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Song submitted:', songInput);
-    drawMoodVisualization();
+    try {
+      const tokenRes = await fetch('http://localhost:5000/auth/token');
+      const tokenData = await tokenRes.json();
+      const response = await fetch('http://localhost:5000/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songName: songInput })
+      });
+      const data = await response.json();
+      console.log('Analysis:', data);
+      drawMoodVisualization(data.mood || 'sad');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const drawMoodVisualization = () => {
+  const drawMoodVisualization = (mood = 'sad') => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const particles = [];
     const particleCount = 30;
 
-    const mood = songInput.includes('happy') ? 'joy' :
-                songInput.includes('energetic') ? 'energy' :
-                songInput.includes('calm') ? 'calm' : 'sad';
     const colors = {
-      joy: ['#ffeb3b', '#ff9800'], // Jaune éclatant, orange vif (contraste fort)
+      joy: ['#ffeb3b', '#ff9800'], // Jaune éclatant, orange vif
       energy: ['#d32f2f', '#f44336'], // Rouge profond, corail
       calm: ['#4caf50', '#81c784'], // Vert émeraude, vert clair
-      sad: ['#1a237e', '#5e87d2'] // Bleu nuit, cobalt (contraste net)
+      sad: ['#1a237e', '#5e87d2'] // Bleu nuit, cobalt
     };
     const [baseColor, accentColor] = colors[mood];
 
@@ -54,14 +63,14 @@ function App() {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Cercles pulsants (plus visibles)
-      const radius = 150 + 30 * Math.sin(time / 30); // Plus grand
-      ctx.globalAlpha = 0.8; // Opacité accrue
+      // Cercles pulsants
+      const radius = 150 + 30 * Math.sin(time / 30);
+      ctx.globalAlpha = 0.8;
       ctx.fillStyle = baseColor;
       ctx.beginPath();
       ctx.arc(200, 200, radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.globalAlpha = 1; // Réinitialise opacité
+      ctx.globalAlpha = 1;
 
       // Lignes verticales vibrantes
       ctx.strokeStyle = '#ffffff';
@@ -92,7 +101,7 @@ function App() {
   };
 
   useEffect(() => {
-    drawMoodVisualization();
+    drawMoodVisualization('sad'); // Valeur par défaut au chargement
   }, []);
 
   return (
@@ -105,7 +114,7 @@ function App() {
             type="text"
             value={songInput}
             onChange={handleInputChange}
-            placeholder="e.g., Happy Song, Energetic Song, Calm Song, Sad Song"
+            placeholder="e.g., Bohemian Rhapsody"
           />
         </label>
         <button type="submit">Visualize</button>
