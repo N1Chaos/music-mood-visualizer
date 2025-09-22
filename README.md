@@ -1,7 +1,7 @@
 # Music Mood Visualizer
 
 ## Aperçu
-Application web pour visualiser l’humeur d’une chanson en temps réel via Spotify API, avec des visualisations dynamiques inspirées du style rock et groovy. Conçue pour musiciens, studios et éducateurs.
+Application web pour visualiser l’humeur d’une chanson en temps réel via Spotify API, avec des visualisations dynamiques. Conçue pour musiciens, studios et éducateurs.
 
 - **Outils** : React, Node.js, Express, MongoDB, Python, Plotly
 - **Situation** : Besoin d’analyser l’émotion des chansons de manière visuelle.
