@@ -10,22 +10,22 @@ function App() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const tokenRes = await fetch('http://localhost:5000/auth/token');
-      const tokenData = await tokenRes.json();
-      const response = await fetch('http://localhost:5000/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ songName: songInput })
-      });
-      const data = await response.json();
-      console.log('Analysis:', data);
-      drawMoodVisualization(data.mood || 'sad');
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  e.preventDefault();
+  try {
+    const tokenRes = await fetch('http://localhost:5000/auth/token');
+    // const tokenData = await tokenRes.json(); // Supprime cette ligne
+    const response = await fetch('http://localhost:5000/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ songName: songInput })
+    });
+    const data = await response.json();
+    console.log('Analysis:', data);
+    drawMoodVisualization(data.mood || 'sad');
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const drawMoodVisualization = (mood = 'sad') => {
     const canvas = canvasRef.current;
