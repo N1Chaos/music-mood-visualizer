@@ -12,8 +12,7 @@ function App() {
   const handleSubmit = async (e) => {
   e.preventDefault();
   try {
-    const tokenRes = await fetch('http://localhost:5000/auth/token');
-    // const tokenData = await tokenRes.json(); // Supprime cette ligne
+    // const tokenRes = await fetch('http://localhost:5000/auth/token'); // Supprime
     const response = await fetch('http://localhost:5000/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
