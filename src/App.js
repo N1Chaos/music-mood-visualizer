@@ -217,19 +217,26 @@ function App() {
       const centralSize = 100 + Math.sin(time * tempo / 60) * 50 * intensity;
       
       switch(moodConfig.animation) {
-        case 'sunburst':
-          drawSunburst(ctx, centerX, centerY, centralSize, time, moodConfig.colors);
-          break;
-        case 'vortex':
-          drawVortex(ctx, centerX, centerY, centralSize, time, moodConfig.colors);
-          break;
-        case 'ripple':
-          drawRipple(ctx, centerX, centerY, centralSize, time, moodConfig.colors);
-          break;
-        case 'fog':
-          drawFog(ctx, centerX, centerY, centralSize, time, moodConfig.colors);
-          break;
-      }
+  case 'sunburst':
+    drawSunburst(ctx, centerX, centerY, centralSize, time, moodConfig.colors);
+    break;
+  case 'vortex':
+    drawVortex(ctx, centerX, centerY, centralSize, time, moodConfig.colors);
+    break;
+  case 'ripple':
+    drawRipple(ctx, centerX, centerY, centralSize, time, moodConfig.colors);
+    break;
+  case 'fog':
+    drawFog(ctx, centerX, centerY, centralSize, time, moodConfig.colors);
+    break;
+  default:
+    // Fallback visuel simple si aucune animation ne correspond
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, centralSize, 0, Math.PI * 2);
+    ctx.fillStyle = moodConfig.colors[0];
+    ctx.fill();
+}
+
 
       // Particules avec comportements avancés
       particles.forEach((particle) => {
