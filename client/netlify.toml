@@ -1,4 +1,9 @@
 [build]
-  command = "npm run build"
+  command = "cd client && npm run build"
+  publish = "client/build"
   functions = "functions"
-  publish = "build"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
