@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import './App.css';
 
 function App() {
@@ -6,9 +6,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentSong, setCurrentSong] = useState(null);
   const canvasRef = useRef(null);
-  // Supprimé: audioRef n'est pas utilisé
 
-  const moodEffects = {
+  // Utilisation de useMemo pour stabiliser l'objet moodEffects
+  const moodEffects = useMemo(() => ({
     joy: {
       particles: 50,
       colors: ['#FFD700', '#FF6B6B', '#4ECDC4', '#FFA500'],
@@ -33,13 +33,12 @@ function App() {
       speed: 1,
       shape: 'rain'
     }
-  };
+  }), []); // Tableau de dépendances vide = jamais recréé
 
   const handleInputChange = (e) => {
     setSongInput(e.target.value);
   };
 
-  // Déplace playMoodSound ici pour éviter les dépendances circulaires
   const playMoodSound = useCallback((mood) => {
     if (!window.AudioContext && !window.webkitAudioContext) {
       console.log('AudioContext not supported');
@@ -88,7 +87,6 @@ function App() {
     }
   }, []);
 
-  // useCallback avec toutes les dépendances nécessaires
   const drawMoodVisualization = useCallback((mood = 'sad', tempo = 100, energy = 0.5) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -213,7 +211,7 @@ function App() {
       canvas.animationId = requestAnimationFrame(animate);
     };
     animate();
-  }, [currentSong, moodEffects]); // moodEffects ajouté aux dépendances
+  }, [currentSong, moodEffects]); // moodEffects est maintenant stable
 
   const handleSubmit = async (e) => {
     e.preventDefault();
