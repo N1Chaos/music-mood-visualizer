@@ -1,5 +1,0 @@
-[build]
-  base = "/"
-  command = "cd client && npm install && npm run build"
-  publish = "client/build"
-  functions = "functions"
