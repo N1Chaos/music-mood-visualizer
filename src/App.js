@@ -12,6 +12,19 @@ function App() {
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
   const [error, setError] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+const [currentTime, setCurrentTime] = useState(0);
+const [duration, setDuration] = useState(0);
+
+useEffect(() => {
+  return () => {
+    // Nettoie l'audio quand le composant est démonté
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+  };
+}, []);
 
   // Palette de couleurs enrichie par émotion avec dégradés dynamiques
   const moodEffects = useMemo(() => ({
@@ -223,22 +236,58 @@ function App() {
   // Fonction pour jouer l'extrait audio
   const playPreview = (previewUrl) => {
   if (!previewUrl) {
-    setError('Aucun extrait audio disponible pour cette chanson.');
+    setError('Aucun extrait audio disponible.');
     return;
   }
+
+  // Arrête l'audio précédent
   if (audioRef.current) {
     audioRef.current.pause();
   }
+
   const audio = new Audio(previewUrl);
-  audio.volume = 0.5;
   audioRef.current = audio;
+
+  // Événements simplifiés
+  audio.onloadedmetadata = () => {
+    setDuration(audio.duration);
+  };
+
+  audio.ontimeupdate = () => {
+    setCurrentTime(audio.currentTime);
+  };
+
+  audio.onended = () => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+  };
+
+  audio.onplay = () => setIsPlaying(true);
+  audio.onpause = () => setIsPlaying(false);
+
+  // Lecture
+  audio.volume = 0.7;
   audio.play().catch(err => {
-    console.log('Audio play failed:', err);
-    setError('Échec de la lecture audio. Veuillez réessayer.');
+    console.error('Erreur audio:', err);
+    setError('Lecture audio impossible.');
   });
+
+  // Arrêt après 30s
   setTimeout(() => {
-    audio.pause();
+    if (!audio.paused) {
+      audio.pause();
+    }
   }, 30000);
+};
+
+const stopPreview = () => {
+  if (audioRef.current) {
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+    audioRef.current = null;
+    setIsPlaying(false);
+    setCurrentTime(0);
+  }
 };
 
   // Fonctions de dessin avancées
@@ -567,6 +616,14 @@ const getMockLyrics = (artist, title) => {
     };
   }, [drawMoodVisualization]);
 
+const formatTime = (seconds) => {
+  if (!seconds || isNaN(seconds)) return '0:00';
+  
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
   return (
     <div className="App">
       <header className="App-header">
@@ -632,26 +689,51 @@ const getMockLyrics = (artist, title) => {
           </div>
           <div className="tab-content">
             {activeTab === 'visualization' && (
-              <div className="visualization-container">
-                <canvas
-                  ref={canvasRef}
-                  width="800"
-                  height="600"
-                  className="mood-canvas"
-                  aria-label="Visualisation interactive des émotions musicales"
-                />
-                {currentSong.preview_url && (
-                  <div className="audio-controls">
-                    <button
-                      onClick={() => playPreview(currentSong.preview_url)}
-                      className="play-btn"
-                    >
-                      ▶️ Jouer l'extrait (30s)
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+  <div className="visualization-container">
+    <canvas
+      ref={canvasRef}
+      width="800"
+      height="600"
+      className="mood-canvas"
+      aria-label="Visualisation interactive des émotions musicales"
+    />
+    
+    {currentSong.preview_url && (
+      <div className="audio-controls">
+        <div className="audio-info">
+          <h4>🎵 Extrait audio (30 secondes)</h4>
+          <p>{currentSong.name} - {currentSong.artist}</p>
+        </div>
+        
+        <div className="audio-player">
+          <button
+            onClick={isPlaying ? stopPreview : () => playPreview(currentSong.preview_url)}
+            className={`play-btn ${isPlaying ? 'playing' : ''}`}
+          >
+            {isPlaying ? '⏸️ Pause' : '▶️ Lecture'}
+          </button>
+          
+          <button onClick={stopPreview} className="stop-btn">
+            ⏹️ Arrêt
+          </button>
+          
+          {/* Barre de progression */}
+          <div className="progress-container">
+            <div className="progress-bar">
+              <div 
+                className="progress-fill"
+                style={{ width: `${(currentTime / duration) * 100}%` }}
+              ></div>
+            </div>
+            <span className="time-display">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
             {activeTab === 'analysis' && audioFeatures && (
               <div className="charts-container">
                 <div className="chart">
