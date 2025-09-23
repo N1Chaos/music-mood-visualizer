@@ -33,7 +33,7 @@ function App() {
       speed: 1,
       shape: 'rain'
     }
-  }), []); // Tableau de dépendances vide = jamais recréé
+  }), []);
 
   const handleInputChange = (e) => {
     setSongInput(e.target.value);
@@ -211,44 +211,48 @@ function App() {
       canvas.animationId = requestAnimationFrame(animate);
     };
     animate();
-  }, [currentSong, moodEffects]); // moodEffects est maintenant stable
+  }, [currentSong, moodEffects]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!songInput.trim()) return;
-    
+
     setIsLoading(true);
     try {
       console.log('🔍 Recherche de:', songInput);
       
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch('/.netlify/functions/spotify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songName: songInput })
+      });
       
-      const moods = Object.keys(moodEffects);
-      const randomMood = moods[Math.floor(Math.random() * moods.length)];
-      const randomTempo = 60 + Math.random() * 120;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
-      const mockData = {
-        name: songInput,
-        artist: 'Artist',
-        tempo: Math.round(randomTempo),
-        mood: randomMood,
-        valence: Math.random(),
-        danceability: Math.random(),
-        energy: Math.random(),
-        duration: 180000 + Math.random() * 300000,
-        preview_url: null,
-        status: 'mock_data'
-      };
-      
-      setCurrentSong(mockData);
-      console.log('🎵 Données simulées:', mockData);
-      drawMoodVisualization(mockData.mood, mockData.tempo, mockData.energy);
-      
-      playMoodSound(mockData.mood);
+      const data = await response.json();
+      console.log('🎵 Données Spotify:', data);
+
+      setCurrentSong(data);
+      drawMoodVisualization(data.mood, data.tempo || 100, data.energy || 0.5);
+      playMoodSound(data.mood);
       
     } catch (err) {
       console.error('Error:', err);
-      drawMoodVisualization('sad', 100, 0.5);
+      // Fallback aux données mock si l'API échoue
+      const mockData = {
+        name: songInput,
+        artist: 'Artist',
+        tempo: 80 + Math.random() * 100,
+        mood: ['joy', 'energy', 'calm', 'sad'][Math.floor(Math.random() * 4)],
+        danceability: Math.random(),
+        energy: Math.random(),
+        status: 'mock_fallback'
+      };
+      
+      setCurrentSong(mockData);
+      drawMoodVisualization(mockData.mood, mockData.tempo, mockData.energy);
     } finally {
       setIsLoading(false);
     }
@@ -321,8 +325,11 @@ function App() {
           <div className="metrics">
             <span>🎼 Tempo: {currentSong.tempo} BPM</span>
             <span>🎨 Mood: {currentSong.mood}</span>
-            <span>💃 Danceability: {Math.round(currentSong.danceability * 100)}%</span>
-            <span>⚡ Energy: {Math.round(currentSong.energy * 100)}%</span>
+            <span>💃 Danceability: {Math.round((currentSong.danceability || 0.5) * 100)}%</span>
+            <span>⚡ Energy: {Math.round((currentSong.energy || 0.5) * 100)}%</span>
+            {currentSong.status === 'mock_fallback' && (
+              <span style={{color: '#ff6b6b'}}>⚠️ Using simulated data</span>
+            )}
           </div>
         </div>
       )}
