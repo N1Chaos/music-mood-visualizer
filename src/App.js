@@ -101,30 +101,30 @@ useEffect(() => {
   }, []);
 
   // Nouvelle fonction pour récupérer les paroles
-  const fetchLyrics = async (artist, title) => {
-  try {
-    console.log(`Fetching lyrics for: ${artist} - ${title}`);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout de 5s
-    const response = await fetch('/.netlify/functions/lyrics', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ artist, title }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    if (!response.ok) {
-      console.error('Lyrics API error:', response.status, response.statusText);
-      return null;
-    }
-    const data = await response.json();
-    console.log('Lyrics data:', data);
-    return data.lyrics;
-  } catch (error) {
-    console.error('Lyrics API error:', error);
-    return null;
-  }
-};
+//   //const fetchLyrics = async (artist, title) => {
+//   try {
+//     console.log(`Fetching lyrics for: ${artist} - ${title}`);
+//     const controller = new AbortController();
+//     const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout de 5s
+//     const response = await fetch('/.netlify/functions/lyrics', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ artist, title }),
+//       signal: controller.signal
+//     });
+//     clearTimeout(timeoutId);
+//     if (!response.ok) {
+//       console.error('Lyrics API error:', response.status, response.statusText);
+//       return null;
+//     }
+//     const data = await response.json();
+//     console.log('Lyrics data:', data);
+//     return data.lyrics;
+//   } catch (error) {
+//     console.error('Lyrics API error:', error);
+//     return null;
+//   }
+// };
   // Nouvelle fonction pour analyser les paroles
   const analyzeLyrics = (lyricsText) => {
     if (!lyricsText) {
