@@ -10,56 +10,39 @@ function App() {
     setSongInput(e.target.value);
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!songInput.trim()) return;
-  
-  setIsLoading(true);
-  try {
-    // SIMULATION avec données mock - en attendant de fixer la fonction Netlify
-    console.log('🔍 Recherche de:', songInput);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!songInput.trim()) return;
     
-    // Simule un délai de chargement réaliste
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Données mock réalistes basées sur le nom de la chanson
-    const moods = ['joy', 'energy', 'calm', 'sad'];
-    const randomMood = moods[Math.floor(Math.random() * moods.length)];
-    const randomTempo = 60 + Math.random() * 120;
-    
-    const mockData = {
-      name: songInput,
-      artist: 'Artist Simulation',
-      tempo: Math.round(randomTempo),
-      mood: randomMood,
-      valence: Math.random(),
-      danceability: Math.random(),
-      energy: Math.random(),
-      status: 'mock_data'
-    };
-    
-    console.log('🎵 Données simulées:', mockData);
-    drawMoodVisualization(mockData.mood, mockData.tempo);
-    
-  } catch (err) {
-    console.error('Error:', err);
-    // En cas d'erreur, affiche une visualisation par défaut
-    drawMoodVisualization('sad', 100);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    try {
+      // SIMULATION avec données mock
+      console.log('🔍 Recherche de:', songInput);
       
-      // Vérifie si on a bien les données avant de dessiner
-      if (data.mood || data.tempo) {
-        drawMoodVisualization(data.mood || 'sad', data.tempo || 100);
-      } else {
-        console.error('Invalid data received:', data);
-        drawMoodVisualization('sad', 100);
-      }
+      // Simule un délai de chargement réaliste
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Données mock réalistes
+      const moods = ['joy', 'energy', 'calm', 'sad'];
+      const randomMood = moods[Math.floor(Math.random() * moods.length)];
+      const randomTempo = 60 + Math.random() * 120;
+      
+      const mockData = {
+        name: songInput,
+        artist: 'Artist Simulation',
+        tempo: Math.round(randomTempo),
+        mood: randomMood,
+        valence: Math.random(),
+        danceability: Math.random(),
+        energy: Math.random(),
+        status: 'mock_data'
+      };
+      
+      console.log('🎵 Données simulées:', mockData);
+      drawMoodVisualization(mockData.mood, mockData.tempo);
+      
     } catch (err) {
       console.error('Error:', err);
-      // Affiche une visualisation d'erreur par défaut
       drawMoodVisualization('sad', 100);
     } finally {
       setIsLoading(false);
@@ -71,7 +54,6 @@ function App() {
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    // Arrête l'animation précédente
     if (canvas.animationId) {
       cancelAnimationFrame(canvas.animationId);
     }
@@ -87,10 +69,8 @@ function App() {
     };
     const [baseColor, accentColor] = colors[mood] || colors.sad;
 
-    // Ajuste l'animation selon le tempo
     const speedFactor = tempo / 100;
 
-    // Initialise particules
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * canvas.width,
@@ -105,14 +85,12 @@ function App() {
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Fond gradient
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
       gradient.addColorStop(0, baseColor);
       gradient.addColorStop(1, accentColor);
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Cercles pulsants (vitesse selon le tempo)
       const radius = 150 + 30 * Math.sin(time / (30 / speedFactor));
       ctx.globalAlpha = 0.8;
       ctx.fillStyle = baseColor;
@@ -121,7 +99,6 @@ function App() {
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      // Lignes verticales vibrantes
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
       for (let i = 0; i < 5; i++) {
@@ -131,7 +108,6 @@ function App() {
         ctx.stroke();
       }
 
-      // Particules fluides
       particles.forEach((p) => {
         ctx.fillStyle = accentColor;
         ctx.beginPath();
@@ -149,17 +125,16 @@ function App() {
     animate();
   };
 
-useEffect(() => {
-  drawMoodVisualization('sad', 100);
-  
-  // Cleanup animation à la destruction du composant
-  const currentCanvas = canvasRef.current;
-  return () => {
-    if (currentCanvas?.animationId) {
-      cancelAnimationFrame(currentCanvas.animationId);
-    }
-  };
-}, []);
+  useEffect(() => {
+    drawMoodVisualization('sad', 100);
+    
+    const currentCanvas = canvasRef.current;
+    return () => {
+      if (currentCanvas?.animationId) {
+        cancelAnimationFrame(currentCanvas.animationId);
+      }
+    };
+  }, []);
 
   return (
     <div className="App">
@@ -187,7 +162,6 @@ useEffect(() => {
         ref={canvasRef} 
         width="400" 
         height="400" 
-        aria-label="Music mood visualization"
       />
     </div>
   );
