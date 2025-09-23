@@ -10,27 +10,45 @@ function App() {
     setSongInput(e.target.value);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!songInput.trim()) return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!songInput.trim()) return;
+  
+  setIsLoading(true);
+  try {
+    // SIMULATION avec données mock - en attendant de fixer la fonction Netlify
+    console.log('🔍 Recherche de:', songInput);
     
-    setIsLoading(true);
-    try {
-      // Utilise la fonction Netlify au lieu de localhost
-      const response = await fetch('/.netlify/functions/spotify', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ songName: songInput })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('Analysis:', data);
+    // Simule un délai de chargement réaliste
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Données mock réalistes basées sur le nom de la chanson
+    const moods = ['joy', 'energy', 'calm', 'sad'];
+    const randomMood = moods[Math.floor(Math.random() * moods.length)];
+    const randomTempo = 60 + Math.random() * 120;
+    
+    const mockData = {
+      name: songInput,
+      artist: 'Artist Simulation',
+      tempo: Math.round(randomTempo),
+      mood: randomMood,
+      valence: Math.random(),
+      danceability: Math.random(),
+      energy: Math.random(),
+      status: 'mock_data'
+    };
+    
+    console.log('🎵 Données simulées:', mockData);
+    drawMoodVisualization(mockData.mood, mockData.tempo);
+    
+  } catch (err) {
+    console.error('Error:', err);
+    // En cas d'erreur, affiche une visualisation par défaut
+    drawMoodVisualization('sad', 100);
+  } finally {
+    setIsLoading(false);
+  }
+};
       
       // Vérifie si on a bien les données avant de dessiner
       if (data.mood || data.tempo) {
