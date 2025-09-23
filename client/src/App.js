@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './App.css';
 
 function App() {
@@ -39,99 +39,12 @@ function App() {
     setSongInput(e.target.value);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!songInput.trim()) return;
-    
-    setIsLoading(true);
-    try {
-      console.log('🔍 Recherche de:', songInput);
-      
-      // Simule un délai de chargement
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Données mock améliorées
-      const moods = Object.keys(moodEffects);
-      const randomMood = moods[Math.floor(Math.random() * moods.length)];
-      const randomTempo = 60 + Math.random() * 120;
-      
-      const mockData = {
-        name: songInput,
-        artist: 'Artist',
-        tempo: Math.round(randomTempo),
-        mood: randomMood,
-        valence: Math.random(),
-        danceability: Math.random(),
-        energy: Math.random(),
-        duration: 180000 + Math.random() * 300000,
-        preview_url: null,
-        status: 'mock_data'
-      };
-      
-      setCurrentSong(mockData);
-      console.log('🎵 Données simulées:', mockData);
-      drawMoodVisualization(mockData.mood, mockData.tempo, mockData.energy);
-      
-      // Joue un son d'ambiance selon l'humeur
-      playMoodSound(mockData.mood);
-      
-    } catch (err) {
-      console.error('Error:', err);
-      drawMoodVisualization('sad', 100, 0.5);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const playMoodSound = (mood) => {
-    // Arrête l'audio précédent
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-    
-    // Sons d'ambiance simples (pourrait être remplacé par de vrais samples)
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    // Configure le son selon l'humeur
-    switch(mood) {
-      case 'joy':
-        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-        oscillator.type = 'sine';
-        break;
-      case 'energy':
-        oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
-        oscillator.type = 'square';
-        break;
-      case 'calm':
-        oscillator.frequency.setValueAtTime(330, audioContext.currentTime);
-        oscillator.type = 'sine';
-        break;
-      case 'sad':
-        oscillator.frequency.setValueAtTime(110, audioContext.currentTime);
-        oscillator.type = 'triangle';
-        break;
-    }
-    
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-    oscillator.start();
-    
-    // Arrête après 3 secondes
-    setTimeout(() => {
-      oscillator.stop();
-    }, 3000);
-  };
-
-  const drawMoodVisualization = (mood = 'sad', tempo = 100, energy = 0.5) => {
+  // Utilisation de useCallback pour stabiliser la fonction
+  const drawMoodVisualization = useCallback((mood = 'sad', tempo = 100, energy = 0.5) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    // Arrête l'animation précédente
     if (canvas.animationId) {
       cancelAnimationFrame(canvas.animationId);
     }
@@ -141,7 +54,6 @@ function App() {
     const particleCount = moodConfig.particles;
 
     // Ajuste l'animation selon le tempo et l'énergie
-    const speedFactor = (tempo / 120) * energy;
     const intensity = energy * 2;
 
     // Initialise particules avec propriétés avancées
@@ -203,7 +115,7 @@ function App() {
         ctx.fillStyle = particle.color;
         ctx.globalAlpha = particle.life;
 
-        // Formes différentes selon l'humeur
+        // Formes différentes selon l'humeur - CORRIGÉ avec default case
         switch(moodConfig.shape) {
           case 'triangle':
             ctx.beginPath();
@@ -221,10 +133,11 @@ function App() {
           case 'rain':
             ctx.fillRect(-particle.size/2, -particle.size/2, particle.size, particle.size * 3);
             break;
-          default: // circle
+          default: // circle - CASE PAR DÉFAUT AJOUTÉ
             ctx.beginPath();
             ctx.arc(0, 0, particle.size, 0, Math.PI * 2);
             ctx.fill();
+            break;
         }
 
         ctx.restore();
@@ -258,10 +171,102 @@ function App() {
         ctx.fillText(`Tempo: ${tempo} BPM | Mood: ${mood}`, centerX, 50);
       }
 
-      time += 0.016; // ~60fps
+      time += 0.016;
       canvas.animationId = requestAnimationFrame(animate);
     };
     animate();
+  }, [currentSong]); // Dépendance correcte
+
+  const playMoodSound = (mood) => {
+    // Vérifie si l'API AudioContext est disponible
+    if (!window.AudioContext && !window.webkitAudioContext) {
+      console.log('AudioContext not supported');
+      return;
+    }
+
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Configure le son selon l'humeur - CORRIGÉ avec default case
+      switch(mood) {
+        case 'joy':
+          oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+          oscillator.type = 'sine';
+          break;
+        case 'energy':
+          oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
+          oscillator.type = 'square';
+          break;
+        case 'calm':
+          oscillator.frequency.setValueAtTime(330, audioContext.currentTime);
+          oscillator.type = 'sine';
+          break;
+        case 'sad':
+          oscillator.frequency.setValueAtTime(110, audioContext.currentTime);
+          oscillator.type = 'triangle';
+          break;
+        default: // CASE PAR DÉFAUT AJOUTÉ
+          oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+          oscillator.type = 'sine';
+          break;
+      }
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      oscillator.start();
+      
+      // Arrête après 3 secondes
+      setTimeout(() => {
+        oscillator.stop();
+      }, 3000);
+    } catch (error) {
+      console.log('Audio error:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!songInput.trim()) return;
+    
+    setIsLoading(true);
+    try {
+      console.log('🔍 Recherche de:', songInput);
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const moods = Object.keys(moodEffects);
+      const randomMood = moods[Math.floor(Math.random() * moods.length)];
+      const randomTempo = 60 + Math.random() * 120;
+      
+      const mockData = {
+        name: songInput,
+        artist: 'Artist',
+        tempo: Math.round(randomTempo),
+        mood: randomMood,
+        valence: Math.random(),
+        danceability: Math.random(),
+        energy: Math.random(),
+        duration: 180000 + Math.random() * 300000,
+        preview_url: null,
+        status: 'mock_data'
+      };
+      
+      setCurrentSong(mockData);
+      console.log('🎵 Données simulées:', mockData);
+      drawMoodVisualization(mockData.mood, mockData.tempo, mockData.energy);
+      
+      playMoodSound(mockData.mood);
+      
+    } catch (err) {
+      console.error('Error:', err);
+      drawMoodVisualization('sad', 100, 0.5);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -273,7 +278,7 @@ function App() {
         cancelAnimationFrame(currentCanvas.animationId);
       }
     };
-  }, []);
+  }, [drawMoodVisualization]); // Dépendance corrigée
 
   return (
     <div className="App">
