@@ -3,6 +3,7 @@ import './App.css';
 
 function App() {
   const [songInput, setSongInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const canvasRef = useRef(null);
 
   const handleInputChange = (e) => {
@@ -10,35 +11,66 @@ function App() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    // const tokenRes = await fetch('http://localhost:5000/auth/token'); // Supprime
-    const response = await fetch('http://localhost:5000/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ songName: songInput })
-    });
-    const data = await response.json();
-    console.log('Analysis:', data);
-    drawMoodVisualization(data.mood || 'sad');
-  } catch (err) {
-    console.error(err);
-  }
-};
+    e.preventDefault();
+    if (!songInput.trim()) return;
+    
+    setIsLoading(true);
+    try {
+      // Utilise la fonction Netlify au lieu de localhost
+      const response = await fetch('/.netlify/functions/spotify', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ songName: songInput })
+      });
 
-  const drawMoodVisualization = (mood = 'sad') => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Analysis:', data);
+      
+      // Vérifie si on a bien les données avant de dessiner
+      if (data.mood || data.tempo) {
+        drawMoodVisualization(data.mood || 'sad', data.tempo || 100);
+      } else {
+        console.error('Invalid data received:', data);
+        drawMoodVisualization('sad', 100);
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      // Affiche une visualisation d'erreur par défaut
+      drawMoodVisualization('sad', 100);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const drawMoodVisualization = (mood = 'sad', tempo = 100) => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
+    // Arrête l'animation précédente
+    if (canvas.animationId) {
+      cancelAnimationFrame(canvas.animationId);
+    }
+
     const particles = [];
     const particleCount = 30;
 
     const colors = {
-      joy: ['#ffeb3b', '#ff9800'], // Jaune éclatant, orange vif
-      energy: ['#d32f2f', '#f44336'], // Rouge profond, corail
-      calm: ['#4caf50', '#81c784'], // Vert émeraude, vert clair
-      sad: ['#1a237e', '#5e87d2'] // Bleu nuit, cobalt
+      joy: ['#ffeb3b', '#ff9800'],
+      energy: ['#d32f2f', '#f44336'],
+      calm: ['#4caf50', '#81c784'],
+      sad: ['#1a237e', '#5e87d2']
     };
-    const [baseColor, accentColor] = colors[mood];
+    const [baseColor, accentColor] = colors[mood] || colors.sad;
+
+    // Ajuste l'animation selon le tempo
+    const speedFactor = tempo / 100;
 
     // Initialise particules
     for (let i = 0; i < particleCount; i++) {
@@ -46,8 +78,8 @@ function App() {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
         size: Math.random() * 4 + 2,
-        speedX: Math.random() * 1.5 - 0.75,
-        speedY: Math.random() * 1.5 - 0.75
+        speedX: (Math.random() * 1.5 - 0.75) * speedFactor,
+        speedY: (Math.random() * 1.5 - 0.75) * speedFactor
       });
     }
 
@@ -62,12 +94,12 @@ function App() {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Cercles pulsants
-      const radius = 150 + 30 * Math.sin(time / 30);
+      // Cercles pulsants (vitesse selon le tempo)
+      const radius = 150 + 30 * Math.sin(time / (30 / speedFactor));
       ctx.globalAlpha = 0.8;
       ctx.fillStyle = baseColor;
       ctx.beginPath();
-      ctx.arc(200, 200, radius, 0, Math.PI * 2);
+      ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
 
@@ -76,8 +108,8 @@ function App() {
       ctx.lineWidth = 2;
       for (let i = 0; i < 5; i++) {
         ctx.beginPath();
-        ctx.moveTo(80 + i * 60, 50 + 15 * Math.sin(time + i));
-        ctx.lineTo(80 + i * 60, 350 - 15 * Math.sin(time + i));
+        ctx.moveTo(80 + i * 60, 50 + 15 * Math.sin(time * speedFactor + i));
+        ctx.lineTo(80 + i * 60, 350 - 15 * Math.sin(time * speedFactor + i));
         ctx.stroke();
       }
 
@@ -93,14 +125,21 @@ function App() {
         if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
       });
 
-      time += 0.1;
-      requestAnimationFrame(animate);
+      time += 0.1 * speedFactor;
+      canvas.animationId = requestAnimationFrame(animate);
     };
     animate();
   };
 
   useEffect(() => {
-    drawMoodVisualization('sad'); // Valeur par défaut au chargement
+    drawMoodVisualization('sad', 100);
+    
+    // Cleanup animation à la destruction du composant
+    return () => {
+      if (canvasRef.current?.animationId) {
+        cancelAnimationFrame(canvasRef.current.animationId);
+      }
+    };
   }, []);
 
   return (
@@ -114,11 +153,23 @@ function App() {
             value={songInput}
             onChange={handleInputChange}
             placeholder="e.g., Bohemian Rhapsody"
+            disabled={isLoading}
           />
         </label>
-        <button type="submit">Visualize</button>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? 'Analyzing...' : 'Visualize'}
+        </button>
       </form>
-      <canvas id="moodCanvas" ref={canvasRef} width="400" height="400" />
+      
+      {isLoading && <div className="loading">Analyzing song mood...</div>}
+      
+      <canvas 
+        id="moodCanvas" 
+        ref={canvasRef} 
+        width="400" 
+        height="400" 
+        aria-label="Music mood visualization"
+      />
     </div>
   );
 }

@@ -1,0 +1,7 @@
+[build]
+  functions = "functions"
+  publish = "build"
+
+[dev]
+  functions = "functions"
+  targetPort = 3000
