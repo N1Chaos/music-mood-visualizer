@@ -131,16 +131,17 @@ function App() {
     animate();
   };
 
-  useEffect(() => {
-    drawMoodVisualization('sad', 100);
-    
-    // Cleanup animation à la destruction du composant
-    return () => {
-      if (canvasRef.current?.animationId) {
-        cancelAnimationFrame(canvasRef.current.animationId);
-      }
-    };
-  }, []);
+useEffect(() => {
+  drawMoodVisualization('sad', 100);
+  
+  // Cleanup animation à la destruction du composant
+  const currentCanvas = canvasRef.current;
+  return () => {
+    if (currentCanvas?.animationId) {
+      cancelAnimationFrame(currentCanvas.animationId);
+    }
+  };
+}, []);
 
   return (
     <div className="App">
