@@ -1,15 +1,178 @@
 .App {
   text-align: center;
-  padding: 20px;
-  background-color: #1a1a1a;
-  color: #e0e0e0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  color: white;
   font-family: 'Arial', sans-serif;
 }
-input, button {
-  margin: 10px;
-  padding: 5px;
-  font-size: 16px;
+
+.App-header {
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
 }
-canvas {
-  margin-top: 20px;
+
+.App-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  background: linear-gradient(45deg, #ffd700, #ff6b6b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.controls {
+  padding: 2rem;
+}
+
+.search-form {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.input-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.song-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 1rem;
+  border: none;
+  border-radius: 25px;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.song-input:focus {
+  transform: scale(1.02);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.visualize-btn {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 25px;
+  background: linear-gradient(45deg, #ff6b6b, #ffd700);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.visualize-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 0 25px rgba(255, 107, 107, 0.5);
+}
+
+.visualize-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid transparent;
+  border-top: 5px solid #ff6b6b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.visualization-container {
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.mood-canvas {
+  border-radius: 15px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.song-info {
+  background: rgba(255, 255, 255, 0.1);
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border-radius: 15px;
+  max-width: 600px;
+  backdrop-filter: blur(10px);
+}
+
+.metrics {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.metrics span {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+.app-footer {
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+  .input-group {
+    flex-direction: column;
+  }
+  
+  .song-input {
+    min-width: auto;
+  }
+  
+  .mood-canvas {
+    width: 95%;
+    height: auto;
+  }
+  
+  .metrics {
+    flex-direction: column;
+    gap: 1rem;
+  }
 }

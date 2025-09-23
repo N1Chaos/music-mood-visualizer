@@ -4,7 +4,36 @@ import './App.css';
 function App() {
   const [songInput, setSongInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentSong, setCurrentSong] = useState(null);
   const canvasRef = useRef(null);
+  const audioRef = useRef(null);
+
+  const moodEffects = {
+    joy: {
+      particles: 50,
+      colors: ['#FFD700', '#FF6B6B', '#4ECDC4', '#FFA500'],
+      speed: 3,
+      shape: 'circle'
+    },
+    energy: {
+      particles: 80,
+      colors: ['#FF0000', '#FF8C00', '#FFFF00', '#FF1493'],
+      speed: 6,
+      shape: 'triangle'
+    },
+    calm: {
+      particles: 20,
+      colors: ['#1E90FF', '#00CED1', '#98FB98', '#87CEEB'],
+      speed: 1.5,
+      shape: 'wave'
+    },
+    sad: {
+      particles: 15,
+      colors: ['#2F4F4F', '#696969', '#778899', '#483D8B'],
+      speed: 1,
+      shape: 'rain'
+    }
+  };
 
   const handleInputChange = (e) => {
     setSongInput(e.target.value);
@@ -16,117 +45,227 @@ function App() {
     
     setIsLoading(true);
     try {
-      // SIMULATION avec données mock
       console.log('🔍 Recherche de:', songInput);
       
-      // Simule un délai de chargement réaliste
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Simule un délai de chargement
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Données mock réalistes
-      const moods = ['joy', 'energy', 'calm', 'sad'];
+      // Données mock améliorées
+      const moods = Object.keys(moodEffects);
       const randomMood = moods[Math.floor(Math.random() * moods.length)];
       const randomTempo = 60 + Math.random() * 120;
       
       const mockData = {
         name: songInput,
-        artist: 'Artist Simulation',
+        artist: 'Artist',
         tempo: Math.round(randomTempo),
         mood: randomMood,
         valence: Math.random(),
         danceability: Math.random(),
         energy: Math.random(),
+        duration: 180000 + Math.random() * 300000,
+        preview_url: null,
         status: 'mock_data'
       };
       
+      setCurrentSong(mockData);
       console.log('🎵 Données simulées:', mockData);
-      drawMoodVisualization(mockData.mood, mockData.tempo);
+      drawMoodVisualization(mockData.mood, mockData.tempo, mockData.energy);
+      
+      // Joue un son d'ambiance selon l'humeur
+      playMoodSound(mockData.mood);
       
     } catch (err) {
       console.error('Error:', err);
-      drawMoodVisualization('sad', 100);
+      drawMoodVisualization('sad', 100, 0.5);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const drawMoodVisualization = (mood = 'sad', tempo = 100) => {
+  const playMoodSound = (mood) => {
+    // Arrête l'audio précédent
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    
+    // Sons d'ambiance simples (pourrait être remplacé par de vrais samples)
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Configure le son selon l'humeur
+    switch(mood) {
+      case 'joy':
+        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+        oscillator.type = 'sine';
+        break;
+      case 'energy':
+        oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
+        oscillator.type = 'square';
+        break;
+      case 'calm':
+        oscillator.frequency.setValueAtTime(330, audioContext.currentTime);
+        oscillator.type = 'sine';
+        break;
+      case 'sad':
+        oscillator.frequency.setValueAtTime(110, audioContext.currentTime);
+        oscillator.type = 'triangle';
+        break;
+    }
+    
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    oscillator.start();
+    
+    // Arrête après 3 secondes
+    setTimeout(() => {
+      oscillator.stop();
+    }, 3000);
+  };
+
+  const drawMoodVisualization = (mood = 'sad', tempo = 100, energy = 0.5) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
+    // Arrête l'animation précédente
     if (canvas.animationId) {
       cancelAnimationFrame(canvas.animationId);
     }
 
+    const moodConfig = moodEffects[mood] || moodEffects.sad;
     const particles = [];
-    const particleCount = 30;
+    const particleCount = moodConfig.particles;
 
-    const colors = {
-      joy: ['#ffeb3b', '#ff9800'],
-      energy: ['#d32f2f', '#f44336'],
-      calm: ['#4caf50', '#81c784'],
-      sad: ['#1a237e', '#5e87d2']
-    };
-    const [baseColor, accentColor] = colors[mood] || colors.sad;
+    // Ajuste l'animation selon le tempo et l'énergie
+    const speedFactor = (tempo / 120) * energy;
+    const intensity = energy * 2;
 
-    const speedFactor = tempo / 100;
-
+    // Initialise particules avec propriétés avancées
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        size: Math.random() * 4 + 2,
-        speedX: (Math.random() * 1.5 - 0.75) * speedFactor,
-        speedY: (Math.random() * 1.5 - 0.75) * speedFactor
+        size: Math.random() * 6 + 2,
+        speedX: (Math.random() - 0.5) * moodConfig.speed * intensity,
+        speedY: (Math.random() - 0.5) * moodConfig.speed * intensity,
+        color: moodConfig.colors[i % moodConfig.colors.length],
+        life: 1,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.1
       });
     }
 
     let time = 0;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, baseColor);
-      gradient.addColorStop(1, accentColor);
+      // Fond gradient animé
+      const gradient = ctx.createRadialGradient(centerX, centerY, 50, centerX, centerY, 200);
+      gradient.addColorStop(0, moodConfig.colors[0] + '80');
+      gradient.addColorStop(1, moodConfig.colors[1] + '20');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const radius = 150 + 30 * Math.sin(time / (30 / speedFactor));
-      ctx.globalAlpha = 0.8;
-      ctx.fillStyle = baseColor;
+      // Cercle central pulsant avec le tempo
+      const pulse = Math.sin(time * tempo / 60) * 30 * intensity;
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = moodConfig.colors[0];
       ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, 80 + pulse, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 5; i++) {
-        ctx.beginPath();
-        ctx.moveTo(80 + i * 60, 50 + 15 * Math.sin(time * speedFactor + i));
-        ctx.lineTo(80 + i * 60, 350 - 15 * Math.sin(time * speedFactor + i));
-        ctx.stroke();
+      // Barres de fréquences autour du cercle
+      const barCount = 12;
+      for (let i = 0; i < barCount; i++) {
+        const angle = (i / barCount) * Math.PI * 2;
+        const barHeight = 30 + Math.sin(time * 2 + i) * 25 * intensity;
+        const x = centerX + Math.cos(angle) * 120 - 5;
+        const y = centerY + Math.sin(angle) * 120 - barHeight / 2;
+        
+        ctx.fillStyle = moodConfig.colors[i % moodConfig.colors.length];
+        ctx.fillRect(x, y, 10, barHeight);
       }
 
-      particles.forEach((p) => {
-        ctx.fillStyle = accentColor;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        p.x += p.speedX;
-        p.y += p.speedY;
-        if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+      // Particules avancées
+      particles.forEach((particle) => {
+        ctx.save();
+        ctx.translate(particle.x, particle.y);
+        ctx.rotate(particle.rotation);
+        
+        ctx.fillStyle = particle.color;
+        ctx.globalAlpha = particle.life;
+
+        // Formes différentes selon l'humeur
+        switch(moodConfig.shape) {
+          case 'triangle':
+            ctx.beginPath();
+            ctx.moveTo(0, -particle.size);
+            ctx.lineTo(particle.size, particle.size);
+            ctx.lineTo(-particle.size, particle.size);
+            ctx.closePath();
+            ctx.fill();
+            break;
+          case 'wave':
+            ctx.beginPath();
+            ctx.arc(0, 0, particle.size, 0, Math.PI * 1.5);
+            ctx.stroke();
+            break;
+          case 'rain':
+            ctx.fillRect(-particle.size/2, -particle.size/2, particle.size, particle.size * 3);
+            break;
+          default: // circle
+            ctx.beginPath();
+            ctx.arc(0, 0, particle.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+
+        // Mise à jour de la particule
+        particle.x += particle.speedX;
+        particle.y += particle.speedY;
+        particle.rotation += particle.rotationSpeed;
+        
+        // Rebond sur les bords
+        if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
+        if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+        
+        // Effet de fade aux bords
+        const edgeDist = Math.min(
+          particle.x,
+          canvas.width - particle.x,
+          particle.y,
+          canvas.height - particle.y
+        );
+        particle.life = Math.min(1, edgeDist / 50);
       });
 
-      time += 0.1 * speedFactor;
+      // Effet de texte flottant
+      if (currentSong) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${currentSong.name} - ${currentSong.artist}`, centerX, 30);
+        ctx.font = '14px Arial';
+        ctx.fillText(`Tempo: ${tempo} BPM | Mood: ${mood}`, centerX, 50);
+      }
+
+      time += 0.016; // ~60fps
       canvas.animationId = requestAnimationFrame(animate);
     };
     animate();
   };
 
   useEffect(() => {
-    drawMoodVisualization('sad', 100);
+    drawMoodVisualization('sad', 100, 0.5);
     
     const currentCanvas = canvasRef.current;
     return () => {
@@ -138,31 +277,69 @@ function App() {
 
   return (
     <div className="App">
-      <h1>Music Mood Visualizer</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Enter Song Name:
-          <input
-            type="text"
-            value={songInput}
-            onChange={handleInputChange}
-            placeholder="e.g., Bohemian Rhapsody"
-            disabled={isLoading}
-          />
-        </label>
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Analyzing...' : 'Visualize'}
-        </button>
-      </form>
-      
-      {isLoading && <div className="loading">Analyzing song mood...</div>}
-      
-      <canvas 
-        id="moodCanvas" 
-        ref={canvasRef} 
-        width="400" 
-        height="400" 
-      />
+      <header className="App-header">
+        <h1>🎵 Music Mood Visualizer</h1>
+        <p>Discover the emotional landscape of your favorite songs</p>
+      </header>
+
+      <div className="controls">
+        <form onSubmit={handleSubmit} className="search-form">
+          <div className="input-group">
+            <input
+              type="text"
+              value={songInput}
+              onChange={handleInputChange}
+              placeholder="Enter a song name... (e.g., Bohemian Rhapsody)"
+              disabled={isLoading}
+              className="song-input"
+            />
+            <button type="submit" disabled={isLoading} className="visualize-btn">
+              {isLoading ? (
+                <>
+                  <span className="spinner"></span>
+                  Analyzing...
+                </>
+              ) : (
+                '🎨 Visualize Mood'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {isLoading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>Analyzing song emotions...</p>
+        </div>
+      )}
+
+      <div className="visualization-container">
+        <canvas 
+          ref={canvasRef} 
+          width="800" 
+          height="600" 
+          className="mood-canvas"
+          aria-label="Interactive music mood visualization"
+        />
+      </div>
+
+      {currentSong && (
+        <div className="song-info">
+          <h3>Now Visualizing:</h3>
+          <p><strong>{currentSong.name}</strong> by {currentSong.artist}</p>
+          <div className="metrics">
+            <span>🎼 Tempo: {currentSong.tempo} BPM</span>
+            <span>🎨 Mood: {currentSong.mood}</span>
+            <span>💃 Danceability: {Math.round(currentSong.danceability * 100)}%</span>
+            <span>⚡ Energy: {Math.round(currentSong.energy * 100)}%</span>
+          </div>
+        </div>
+      )}
+
+      <footer className="app-footer">
+        <p>Experience the emotional power of music through visual art</p>
+      </footer>
     </div>
   );
 }
