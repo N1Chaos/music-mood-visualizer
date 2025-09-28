@@ -11,22 +11,21 @@ function App() {
   const [activeTab, setActiveTab] = useState('visualization');
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
+  const tempoIntervalRef = useRef(null);
   const [error, setError] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
-const [currentTime, setCurrentTime] = useState(0);
-const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
-useEffect(() => {
-  return () => {
-    // Nettoie l'audio quand le composant est démonté
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-  };
-}, []);
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
-  // Palette de couleurs enrichie par émotion avec dégradés dynamiques
   const moodEffects = useMemo(() => ({
     joy: {
       particles: 80,
@@ -80,18 +79,19 @@ useEffect(() => {
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
+      
       const frequencies = {
         joy: [440, 554, 659, 880],
         energy: [220, 330, 440, 550],
         calm: [330, 392, 494, 587],
         sad: [110, 131, 165, 196]
       };
+      
       oscillator.frequency.setValueAtTime(
         frequencies[mood]?.[Math.floor(Math.random() * frequencies[mood].length)] || 440,
         audioContext.currentTime
       );
       oscillator.type = 'sine';
-
       gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
       oscillator.start();
       setTimeout(() => oscillator.stop(), 2000);
@@ -100,37 +100,11 @@ useEffect(() => {
     }
   }, []);
 
-  // Nouvelle fonction pour récupérer les paroles
-//   //const fetchLyrics = async (artist, title) => {
-//   try {
-//     console.log(`Fetching lyrics for: ${artist} - ${title}`);
-//     const controller = new AbortController();
-//     const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout de 5s
-//     const response = await fetch('/.netlify/functions/lyrics', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ artist, title }),
-//       signal: controller.signal
-//     });
-//     clearTimeout(timeoutId);
-//     if (!response.ok) {
-//       console.error('Lyrics API error:', response.status, response.statusText);
-//       return null;
-//     }
-//     const data = await response.json();
-//     console.log('Lyrics data:', data);
-//     return data.lyrics;
-//   } catch (error) {
-//     console.error('Lyrics API error:', error);
-//     return null;
-//   }
-// };
-  // Nouvelle fonction pour analyser les paroles
   const analyzeLyrics = (lyricsText) => {
     if (!lyricsText) {
-    console.log('No lyrics provided for analysis');
-    return null;
-  }
+      console.log('No lyrics provided for analysis');
+      return null;
+    }
 
     const words = lyricsText.toLowerCase().split(/\s+/);
     const wordCount = words.length;
@@ -158,7 +132,6 @@ useEffect(() => {
     };
   };
 
-  // Configuration des graphiques Plotly
   const createAudioFeaturesChart = (features) => {
     if (!features) return null;
 
@@ -172,6 +145,7 @@ useEffect(() => {
       features.liveness * 100,
       features.speechiness * 100
     ];
+    
     return {
       data: [{
         type: 'bar',
@@ -209,6 +183,7 @@ useEffect(() => {
       calm: '#4ECDC4',
       sad: '#778899'
     };
+    
     return {
       data: [{
         type: 'indicator',
@@ -233,64 +208,92 @@ useEffect(() => {
     };
   };
 
-  // Fonction pour jouer l'extrait audio
-  const playPreview = (previewUrl) => {
-  if (!previewUrl) {
-    setError('Aucun extrait audio disponible.');
-    return;
-  }
-
-  // Arrête l'audio précédent
-  if (audioRef.current) {
-    audioRef.current.pause();
-  }
-
-  const audio = new Audio(previewUrl);
-  audioRef.current = audio;
-
-  // Événements simplifiés
-  audio.onloadedmetadata = () => {
-    setDuration(audio.duration);
-  };
-
-  audio.ontimeupdate = () => {
-    setCurrentTime(audio.currentTime);
-  };
-
-  audio.onended = () => {
-    setIsPlaying(false);
-    setCurrentTime(0);
-  };
-
-  audio.onplay = () => setIsPlaying(true);
-  audio.onpause = () => setIsPlaying(false);
-
-  // Lecture
-  audio.volume = 0.7;
-  audio.play().catch(err => {
-    console.error('Erreur audio:', err);
-    setError('Lecture audio impossible.');
-  });
-
-  // Arrêt après 30s
-  setTimeout(() => {
-    if (!audio.paused) {
-      audio.pause();
+  const getYouTubeAudio = async (songName, artist) => {
+    try {
+      const response = await fetch('/.netlify/functions/youtube', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ songName, artist })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('YouTube error:', error);
+      return null;
     }
-  }, 30000);
-};
+  };
 
-const stopPreview = () => {
-  if (audioRef.current) {
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
-    audioRef.current = null;
-    setIsPlaying(false);
-    setCurrentTime(0);
-  }
-};
+  const startTempoAnalysis = (spotifyTempo, mood) => {
+    const interval = (60 / spotifyTempo) * 1000;
+    let beatCount = 0;
+    
+    const pulseVisualization = () => {
+      if (!currentSong) {
+        if (tempoIntervalRef.current) {
+          clearInterval(tempoIntervalRef.current);
+        }
+        return;
+      }
+      
+      beatCount++;
+      const intensity = beatCount % 4 === 0 ? 2.0 : 1.5;
+      drawMoodVisualization(mood, spotifyTempo, intensity);
+    };
+    
+    return setInterval(pulseVisualization, interval);
+  };
 
-  // Fonctions de dessin avancées
+  const playPreview = (previewUrl) => {
+    if (!previewUrl) {
+      setError('Aucun extrait audio disponible.');
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    const audio = new Audio(previewUrl);
+    audioRef.current = audio;
+
+    audio.onloadedmetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    audio.ontimeupdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    audio.onended = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+
+    audio.onplay = () => setIsPlaying(true);
+    audio.onpause = () => setIsPlaying(false);
+
+    audio.volume = 0.7;
+    audio.play().catch(err => {
+      console.error('Erreur audio:', err);
+      setError('Lecture audio impossible.');
+    });
+
+    setTimeout(() => {
+      if (!audio.paused) {
+        audio.pause();
+      }
+    }, 30000);
+  };
+
+  const stopPreview = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+  };
+
   const drawSunburst = (ctx, x, y, size, time, colors) => {
     ctx.save();
     ctx.translate(x, y);
@@ -328,11 +331,11 @@ const stopPreview = () => {
 
       for (let j = 0; j <= points; j++) {
         const angle = (j / points) * Math.PI * 2 + time * (i + 1) * 0.5;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+        const xPos = Math.cos(angle) * radius;
+        const yPos = Math.sin(angle) * radius;
 
-        if (j === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+        if (j === 0) ctx.moveTo(xPos, yPos);
+        else ctx.lineTo(xPos, yPos);
       }
       ctx.closePath();
       ctx.stroke();
@@ -386,6 +389,7 @@ const stopPreview = () => {
     if (canvas.animationId) {
       cancelAnimationFrame(canvas.animationId);
     }
+    
     const moodConfig = moodEffects[mood] || moodEffects.sad;
     const particles = [];
     const intensity = energy * moodConfig.intensity;
@@ -502,108 +506,105 @@ const stopPreview = () => {
     animate();
   }, [currentSong, moodEffects]);
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!songInput.trim()) return;
-  
-  setIsLoading(true);
-  setError(null);
-
-  try {
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const baseURL = isDevelopment ? 'http://localhost:8888' : '';
-
-    console.log('🔍 Base URL:', baseURL);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!songInput.trim()) return;
     
-    // Appel Spotify
-    const response = await fetch(`${baseURL}/.netlify/functions/spotify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ songName: songInput })
-    });
+    setIsLoading(true);
+    setError(null);
 
-    console.log('📊 Response status:', response.status);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('🎵 Données Spotify reçues:', data);
-
-    // Appel Lyrics
-    let lyricsText = null;
-    let lyricsAnalysis = null;
-    
     try {
-      const lyricsResponse = await fetch(`${baseURL}/.netlify/functions/lyrics`, {
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const baseURL = isDevelopment ? 'http://localhost:8888' : '';
+
+      console.log('🔍 Base URL:', baseURL);
+      
+      const response = await fetch(`${baseURL}/.netlify/functions/spotify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          artist: data.artist, 
-          title: data.name 
-        })
+        body: JSON.stringify({ songName: songInput })
       });
 
-      if (lyricsResponse.ok) {
-        const lyricsData = await lyricsResponse.json();
-        lyricsText = lyricsData.lyrics;
-        lyricsAnalysis = analyzeLyrics(lyricsText);
-        console.log('📝 Analyse des paroles:', lyricsAnalysis);
+      console.log('📊 Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    } catch (lyricsError) {
-      console.warn('⚠️ Erreur lyrics:', lyricsError);
+
+      const data = await response.json();
+      console.log('🎵 Données Spotify reçues:', data);
+
+      let lyricsText = null;
+      let lyricsAnalysis = null;
+      
+      try {
+        const lyricsResponse = await fetch(`${baseURL}/.netlify/functions/lyrics`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            artist: data.artist, 
+            title: data.name 
+          })
+        });
+
+        if (lyricsResponse.ok) {
+          const lyricsData = await lyricsResponse.json();
+          lyricsText = lyricsData.lyrics;
+          lyricsAnalysis = analyzeLyrics(lyricsText);
+          console.log('📝 Analyse des paroles:', lyricsAnalysis);
+        }
+      } catch (lyricsError) {
+        console.warn('⚠️ Erreur lyrics:', lyricsError);
+      }
+
+      setCurrentSong(data);
+      setAudioFeatures(data);
+      setLyrics(lyricsAnalysis);
+      
+      drawMoodVisualization(data.mood, data.tempo || 100, data.energy || 0.5);
+      playMoodSound(data.mood);
+
+      if (tempoIntervalRef.current) clearInterval(tempoIntervalRef.current);
+      tempoIntervalRef.current = startTempoAnalysis(data.tempo, data.mood);
+      
+      if (data.preview_url) {
+        playPreview(data.preview_url);
+      } else {
+        const youtubeData = await getYouTubeAudio(data.name, data.artist);
+        if (youtubeData && youtubeData.video_id) {
+          console.log('🎵 YouTube audio disponible:', youtubeData.video_id);
+          setCurrentSong(prev => ({...prev, youtube_id: youtubeData.video_id}));
+        } else {
+          setError('Aucun extrait audio disponible');
+        }
+      }
+
+    } catch (err) {
+      console.error('Erreur:', err);
+      setError('Erreur lors de l\'analyse de la chanson. Veuillez réessayer.');
+      
+      const mockData = {
+        name: songInput,
+        artist: 'Artist',
+        tempo: 80 + Math.random() * 100,
+        mood: ['joy', 'energy', 'calm', 'sad'][Math.floor(Math.random() * 4)],
+        danceability: Math.random(),
+        energy: Math.random(),
+        valence: Math.random(),
+        acousticness: Math.random(),
+        instrumentalness: Math.random(),
+        liveness: Math.random(),
+        speechiness: Math.random(),
+        status: 'mock_fallback'
+      };
+      setCurrentSong(mockData);
+      setAudioFeatures(mockData);
+      setLyrics(analyzeLyrics(`Mock lyrics for ${songInput} by Artist\n\nThis is a test lyrics content for demonstration.`));
+      drawMoodVisualization(mockData.mood, mockData.tempo, mockData.energy);
+    } finally {
+      setIsLoading(false);
     }
-
-    // Mise à jour de l'état
-    setCurrentSong(data);
-    setAudioFeatures(data);
-    setLyrics(lyricsAnalysis);
-    
-    // Déclenchement des effets visuels et sonores
-    drawMoodVisualization(data.mood, data.tempo || 100, data.energy || 0.5);
-    playMoodSound(data.mood);
-    
-    // Lecture de l'extrait audio si disponible
-    if (data.preview_url) {
-      playPreview(data.preview_url);
-    } else {
-      setError('Aucun extrait audio disponible pour cette chanson.');
-    }
-
-  } catch (err) {
-    console.error('Erreur:', err);
-    setError('Erreur lors de l\'analyse de la chanson. Veuillez réessayer.');
-    
-    // Fallback mock data
-    const mockData = {
-      name: songInput,
-      artist: 'Artist',
-      tempo: 80 + Math.random() * 100,
-      mood: ['joy', 'energy', 'calm', 'sad'][Math.floor(Math.random() * 4)],
-      danceability: Math.random(),
-      energy: Math.random(),
-      valence: Math.random(),
-      acousticness: Math.random(),
-      instrumentalness: Math.random(),
-      liveness: Math.random(),
-      speechiness: Math.random(),
-      status: 'mock_fallback'
-    };
-    setCurrentSong(mockData);
-    setAudioFeatures(mockData);
-    setLyrics(analyzeLyrics(getMockLyrics('Artist', songInput)));
-    drawMoodVisualization(mockData.mood, mockData.tempo, mockData.energy);
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-// Ajoutez cette fonction si elle n'existe pas
-const getMockLyrics = (artist, title) => {
-  return `Mock lyrics for ${title} by ${artist}\n\nThis is a test lyrics content for demonstration.`;
-};
-
+  };
 
   useEffect(() => {
     drawMoodVisualization('calm', 100, 0.5);
@@ -616,13 +617,21 @@ const getMockLyrics = (artist, title) => {
     };
   }, [drawMoodVisualization]);
 
-const formatTime = (seconds) => {
-  if (!seconds || isNaN(seconds)) return '0:00';
-  
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
+  const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (tempoIntervalRef.current) {
+        clearInterval(tempoIntervalRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="App">
@@ -630,6 +639,7 @@ const formatTime = (seconds) => {
         <h1>🎵 Advanced Music Mood Visualizer</h1>
         <p>Analyse complète : émotions, paroles et caractéristiques audio</p>
       </header>
+      
       <div className="controls">
         <form onSubmit={handleSubmit} className="search-form">
           <div className="input-group">
@@ -654,17 +664,20 @@ const formatTime = (seconds) => {
           </div>
         </form>
       </div>
+
       {error && (
-  <div className="error-message">
-    <p>{error}</p>
-  </div>
-)}
+        <div className="error-message">
+          <p>{error}</p>
+        </div>
+      )}
+
       {isLoading && (
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
           <p>Analyse des émotions musicales...</p>
         </div>
       )}
+
       {currentSong && (
         <div className="tabs-container">
           <div className="tabs">
@@ -687,53 +700,68 @@ const formatTime = (seconds) => {
               📝 Analyse Paroles
             </button>
           </div>
+          
           <div className="tab-content">
             {activeTab === 'visualization' && (
-  <div className="visualization-container">
-    <canvas
-      ref={canvasRef}
-      width="800"
-      height="600"
-      className="mood-canvas"
-      aria-label="Visualisation interactive des émotions musicales"
-    />
-    
-    {currentSong.preview_url && (
-      <div className="audio-controls">
-        <div className="audio-info">
-          <h4>🎵 Extrait audio (30 secondes)</h4>
-          <p>{currentSong.name} - {currentSong.artist}</p>
-        </div>
-        
-        <div className="audio-player">
-          <button
-            onClick={isPlaying ? stopPreview : () => playPreview(currentSong.preview_url)}
-            className={`play-btn ${isPlaying ? 'playing' : ''}`}
-          >
-            {isPlaying ? '⏸️ Pause' : '▶️ Lecture'}
-          </button>
-          
-          <button onClick={stopPreview} className="stop-btn">
-            ⏹️ Arrêt
-          </button>
-          
-          {/* Barre de progression */}
-          <div className="progress-container">
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{ width: `${(currentTime / duration) * 100}%` }}
-              ></div>
-            </div>
-            <span className="time-display">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)}
+              <div className="visualization-container">
+                <canvas
+                  ref={canvasRef}
+                  width="800"
+                  height="600"
+                  className="mood-canvas"
+                  aria-label="Visualisation interactive des émotions musicales"
+                />
+                
+                {currentSong.youtube_id && (
+                  <div className="youtube-player">
+                    <h4>🎵 Extrait YouTube</h4>
+                    <iframe
+                      width="300"
+                      height="80"
+                      src={`https://www.youtube.com/embed/${currentSong.youtube_id}?autoplay=1&controls=1`}
+                      title="YouTube audio player"
+                      frameBorder="0"
+                      allow="autoplay; encrypted-media"
+                    />
+                  </div>
+                )}
+                
+                {currentSong.preview_url && (
+                  <div className="audio-controls">
+                    <div className="audio-info">
+                      <h4>🎵 Extrait audio (30 secondes)</h4>
+                      <p>{currentSong.name} - {currentSong.artist}</p>
+                    </div>
+                    
+                    <div className="audio-player">
+                      <button
+                        onClick={isPlaying ? stopPreview : () => playPreview(currentSong.preview_url)}
+                        className={`play-btn ${isPlaying ? 'playing' : ''}`}
+                      >
+                        {isPlaying ? '⏸️ Pause' : '▶️ Lecture'}
+                      </button>
+                      
+                      <button onClick={stopPreview} className="stop-btn">
+                        ⏹️ Arrêt
+                      </button>
+                      
+                      <div className="progress-container">
+                        <div className="progress-bar">
+                          <div 
+                            className="progress-fill"
+                            style={{ width: `${(currentTime / duration) * 100}%` }}
+                          ></div>
+                        </div>
+                        <span className="time-display">
+                          {formatTime(currentTime)} / {formatTime(duration)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
             {activeTab === 'analysis' && audioFeatures && (
               <div className="charts-container">
                 <div className="chart">
@@ -745,36 +773,37 @@ const formatTime = (seconds) => {
                 </div>
               </div>
             )}
+            
             {activeTab === 'lyrics' && (
-  <div className="lyrics-analysis">
-    {lyrics ? (
-      <>
-        <div className="chart">
-          <Plot
-            {...createSentimentChart(lyrics, currentSong.mood)}
-            config={{ displayModeBar: false }}
-            style={{ width: '100%', height: '300px' }}
-          />
-        </div>
-        <div className="lyrics-stats">
-          <h4>Statistiques des paroles :</h4>
-          <p>Mots total : {lyrics.wordCount}</p>
-          <p>Mots uniques : {lyrics.uniqueWords}</p>
-          <p>Richesse du vocabulaire : {lyrics.vocabularyRichness}%</p>
-          <p>Sentiment : {lyrics.sentiment} ({lyrics.sentimentScore}%)</p>
-        </div>
-      </>
-    ) : (
-      <div className="lyrics-error">
-        <p>Paroles non disponibles pour cette chanson. Essayez une autre chanson ou vérifiez l'orthographe.</p>
-      </div>
-    )}
-
-  </div>
-)}
+              <div className="lyrics-analysis">
+                {lyrics ? (
+                  <>
+                    <div className="chart">
+                      <Plot
+                        {...createSentimentChart(lyrics, currentSong.mood)}
+                        config={{ displayModeBar: false }}
+                        style={{ width: '100%', height: '300px' }}
+                      />
+                    </div>
+                    <div className="lyrics-stats">
+                      <h4>Statistiques des paroles :</h4>
+                      <p>Mots total : {lyrics.wordCount}</p>
+                      <p>Mots uniques : {lyrics.uniqueWords}</p>
+                      <p>Richesse du vocabulaire : {lyrics.vocabularyRichness}%</p>
+                      <p>Sentiment : {lyrics.sentiment} ({lyrics.sentimentScore}%)</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="lyrics-error">
+                    <p>Paroles non disponibles pour cette chanson. Essayez une autre chanson ou vérifiez l'orthographe.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
+      
       {currentSong && (
         <div className="song-info">
           <h3>🎵 {currentSong.name} - {currentSong.artist}</h3>
@@ -790,6 +819,7 @@ const formatTime = (seconds) => {
           </div>
         </div>
       )}
+      
       <footer className="app-footer">
         <p>Analyse avancée de la musique avec visualisations interactives</p>
       </footer>

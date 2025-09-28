@@ -1,3 +1,45 @@
+// Ajoute cette fonction AVANT exports.handler
+const getFallbackFeatures = (track) => {
+  // Analyse basique du nom et artiste pour des valeurs plus réalistes
+  const name = track.name.toLowerCase();
+  const artist = track.artists[0].name.toLowerCase();
+  
+  // Détermine le genre approximatif
+  let energy = 0.5;
+  let valence = 0.5;
+  let tempo = 120;
+  let danceability = 0.5;
+  
+  // Règles basiques par artiste/nom
+  if (name.includes('rock') || artist.includes('rock')) {
+    energy = 0.8; valence = 0.6; tempo = 140; danceability = 0.6;
+  } else if (name.includes('pop') || artist.includes('pop')) {
+    energy = 0.7; valence = 0.8; tempo = 120; danceability = 0.8;
+  } else if (name.includes('jazz') || artist.includes('jazz')) {
+    energy = 0.4; valence = 0.7; tempo = 100; danceability = 0.5;
+  } else if (name.includes('sad') || name.includes('slow')) {
+    energy = 0.3; valence = 0.2; tempo = 80; danceability = 0.3;
+  } else if (name.includes('happy') || name.includes('dance')) {
+    energy = 0.9; valence = 0.9; tempo = 130; danceability = 0.9;
+  }
+  
+  // Ajuste basé sur la popularité
+  const popularityFactor = track.popularity / 100;
+  energy *= (0.7 + popularityFactor * 0.3);
+  valence *= (0.7 + popularityFactor * 0.3);
+  
+  return {
+    valence: Math.min(1, valence),
+    tempo: Math.max(60, Math.min(200, tempo)),
+    danceability: Math.min(1, danceability),
+    energy: Math.min(1, energy),
+    acousticness: 0.3,
+    instrumentalness: 0.1,
+    liveness: 0.2,
+    speechiness: 0.05
+  };
+};
+
 // netlify/functions/spotify.js
 exports.handler = async (event) => {
   const headers = {
@@ -64,7 +106,7 @@ exports.handler = async (event) => {
 
     // Recherche de la chanson
     const searchResponse = await fetch(
-      `https://api.spotify.com/v1/search?q=${encodeURIComponent(songName)}&type=track&limit=1`,
+      `https://api.spotify.com/v1/search?q=${encodeURIComponent(songName)}&type=track&limit=1&market=US`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -94,57 +136,26 @@ exports.handler = async (event) => {
     console.log('✅ Track found:', track.name, '-', track.artists[0].name);
 
     // Workaround pour audio-features (déprécié depuis nov 2024)
-    let audioFeatures = {
-      valence: 0.5,
-      tempo: 120,
-      danceability: 0.5,
-      energy: 0.5,
-      acousticness: 0.5,
-      instrumentalness: 0.5,
-      liveness: 0.5,
-      speechiness: 0.5
-    };
-
-    try {
-      // Essayer d'obtenir des recommandations pour avoir un track avec audio-features
-      const featuresResponse = await fetch(
-        `https://api.spotify.com/v1/recommendations?seed_tracks=${track.id}&limit=1`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (featuresResponse.ok) {
-        const featuresData = await featuresResponse.json();
-        const recommendedTrack = featuresData.tracks[0];
-        
-        if (recommendedTrack) {
-          console.log('🎯 Using recommended track for audio features:', recommendedTrack.name);
-          
-          const audioFeaturesResponse = await fetch(
-            `https://api.spotify.com/v1/audio-features/${recommendedTrack.id}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          
-          if (audioFeaturesResponse.ok) {
-            audioFeatures = await audioFeaturesResponse.json();
-            console.log('✅ Audio features obtained');
-          } else {
-            console.warn('⚠️ Using default audio features');
-          }
-        }
-      }
-    } catch (featuresError) {
-      console.warn('⚠️ Audio features fallback:', featuresError.message);
+    let audioFeatures = null;
+try {
+  const featuresResponse = await fetch(
+    `https://api.spotify.com/v1/audio-features/${track.id}`,
+    {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
     }
+  );
+  
+  if (featuresResponse.ok) {
+    audioFeatures = await featuresResponse.json();
+    console.log('✅ Real audio features:', audioFeatures);
+  } else {
+    throw new Error('Audio features not available');
+  }
+} catch (error) {
+  console.warn('❌ Using fallback features');
+  // Fallback basé sur le genre/artiste
+  audioFeatures = getFallbackFeatures(track);
+}
 
     // Déterminer l'humeur basée sur la valence
     const valence = audioFeatures.valence;
