@@ -6,7 +6,6 @@ Outils : React, Node.js, Express, MongoDB, Python, Plotly
 Situation : Besoin d'une analyse visuelle des émotions des chansons pour une exploration musicale immersive.
 Tâche : Développer une application interactive capable d'extraire les paroles, le tempo et les caractéristiques audio pour générer des visualisations dynamiques.
 Action : Création d'une interface utilisateur avec React, intégration de l'API Spotify pour les métadonnées audio, utilisation de l'API Lyrics.ovh pour les paroles, analyse des données avec Python, et rendu de visualisations via Plotly et Canvas.
-Résultat : Testée avec 10 chansons, l'application atteint une satisfaction UX prévue de 90 % dans les retours initiaux.
 
 Fonctionnalités
 
